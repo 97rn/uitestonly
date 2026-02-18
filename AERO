@@ -6,7 +6,7 @@ local TextService = game:GetService("TextService")
 
 local UI_MAIN_W, UI_MAIN_H = 585, 385     
 local UI_TOP_H = 56                       
-local UI_SIDEBAR_W = 195                  
+local UI_SIDEBAR_W = 180                  
 local UI_TAB_H = 32                       
 
 local function Create(class, props, children)
