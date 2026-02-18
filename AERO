@@ -7,7 +7,7 @@ local TextService = game:GetService("TextService")
 local UI_MAIN_W, UI_MAIN_H = 585, 385     
 local UI_TOP_H = 56                       
 local UI_SIDEBAR_W = 195                  
-local UI_TAB_H = 34                       
+local UI_TAB_H = 32                       
 
 local function Create(class, props, children)
 	local obj = Instance.new(class)
@@ -262,7 +262,7 @@ function Library:New(config)
 		local TitleLabel = Create("TextLabel", {
 			Text = title:upper(),
 			Font = Enum.Font.GothamBold,
-			TextSize = 13,
+			TextSize = 12,
 			TextColor3 = Color3.fromRGB(100, 170, 255),
 			BackgroundTransparency = 1,
 			TextTransparency = 1,
@@ -275,7 +275,7 @@ function Library:New(config)
 		local ContentLabel = Create("TextLabel", {
 			Text = content,
 			Font = Enum.Font.GothamMedium,
-			TextSize = 13,
+			TextSize = 12,
 			TextColor3 = Color3.fromRGB(200, 200, 220),
 			BackgroundTransparency = 1,
 			TextTransparency = 1,
@@ -326,7 +326,7 @@ function Library:New(config)
 		local TabBtn = Create("TextButton", {
 			Text = name,
 			Font = Enum.Font.GothamMedium,
-			TextSize = 13,
+			TextSize = 12,
 			TextColor3 = Color3.fromRGB(150, 150, 170),
 			BackgroundTransparency = 1,
 			Size = UDim2.fromScale(1, 1),
@@ -334,7 +334,7 @@ function Library:New(config)
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Parent = TabBg
 		}, {
-			Create("UIPadding", {PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 8)})
+			Create("UIPadding", {PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 8)})
 		})
 
 		local Page = Create("ScrollingFrame", {
@@ -392,7 +392,7 @@ function Library:New(config)
 			Create("TextLabel", {
 				Text = text,
 				Font = Enum.Font.GothamMedium,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(200, 200, 220),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromOffset(15, 0),
@@ -445,7 +445,7 @@ function Library:New(config)
 			Create("TextLabel", {
 				Text = text,
 				Font = Enum.Font.GothamMedium,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(200, 200, 220),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromOffset(15, 0),
@@ -505,7 +505,7 @@ function Library:New(config)
 			Create("TextLabel", {
 				Text = text,
 				Font = Enum.Font.GothamMedium,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(200, 200, 220),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromOffset(15, 8),
@@ -516,7 +516,7 @@ function Library:New(config)
 			local ValueLabel = Create("TextLabel", {
 				Text = tostring(default),
 				Font = Enum.Font.GothamBold,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(80, 150, 255),
 				BackgroundTransparency = 1,
 				Position = UDim2.new(1, -65, 0, 8),
@@ -600,7 +600,7 @@ function Library:New(config)
 			local TitleLabel = Create("TextLabel", {
 				Text = text,
 				Font = Enum.Font.GothamMedium,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(200, 200, 220),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromOffset(15, 0),
@@ -654,7 +654,7 @@ function Library:New(config)
 				local Opt = Create("TextButton", {
 					Text = v,
 					Font = Enum.Font.GothamMedium,
-					TextSize = 13,
+					TextSize = 12,
 					TextColor3 = Color3.fromRGB(150, 150, 170),
 					Size = UDim2.new(1, 0, 0, 30),
 					BackgroundTransparency = 1,
@@ -690,7 +690,7 @@ function Library:New(config)
 			local Text = Create("TextLabel", {
 				Text = text,
 				Font = Enum.Font.GothamMedium,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(180, 180, 200),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromOffset(15, 8),
@@ -741,7 +741,7 @@ function Library:New(config)
 			local Desc = Create("TextLabel", {
 				Text = content,
 				Font = Enum.Font.GothamMedium,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(150, 150, 170),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromOffset(15, 38),
@@ -777,7 +777,7 @@ function Library:New(config)
 			Create("TextLabel", {
 				Text = text,
 				Font = Enum.Font.GothamMedium,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(200, 200, 220),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromOffset(15, 0),
@@ -843,7 +843,7 @@ function Library:New(config)
 			local TitleLabel = Create("TextLabel", {
 				Text = text,
 				Font = Enum.Font.GothamMedium,
-				TextSize = 13,
+				TextSize = 12,
 				TextColor3 = Color3.fromRGB(200, 200, 220),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromOffset(15, 0),
