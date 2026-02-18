@@ -4,9 +4,9 @@ local Player = game:GetService("Players").LocalPlayer
 local TextService = game:GetService("TextService")
 
 
-local UI_MAIN_W, UI_MAIN_H = 600, 400    
-local UI_TOP_H = 60                       
-local UI_SIDEBAR_W = 180                 
+local UI_MAIN_W, UI_MAIN_H = 590, 390     
+local UI_TOP_H = 58                       
+local UI_SIDEBAR_W = 190                  
 local UI_TAB_H = 36                       
 
 local function Create(class, props, children)
