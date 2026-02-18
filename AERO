@@ -3,11 +3,11 @@ local TweenService = game:GetService("TweenService")
 local Player = game:GetService("Players").LocalPlayer
 local TextService = game:GetService("TextService")
 
---// UI SIZING (edit these)
-local UI_MAIN_W, UI_MAIN_H = 650, 440     -- overall UI size (was 550x380)
-local UI_TOP_H = 65                       -- top bar height (was 55)
-local UI_SIDEBAR_W = 200                  -- tab label column width (was 150)
-local UI_TAB_H = 38                       -- tab row height (was 34)
+
+local UI_MAIN_W, UI_MAIN_H = 600, 400    
+local UI_TOP_H = 60                       
+local UI_SIDEBAR_W = 180                 
+local UI_TAB_H = 36                       
 
 local function Create(class, props, children)
 	local obj = Instance.new(class)
