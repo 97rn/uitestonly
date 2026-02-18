@@ -6,7 +6,7 @@ local TextService = game:GetService("TextService")
 
 local UI_MAIN_W, UI_MAIN_H = 585, 385     
 local UI_TOP_H = 56                       
-local UI_SIDEBAR_W = 180                  
+local UI_SIDEBAR_W = 195                  
 local UI_TAB_H = 32                       
 
 local function Create(class, props, children)
@@ -318,7 +318,7 @@ function Library:New(config)
 
 		local Dot = Create("Frame", {
 			Size = UDim2.fromOffset(4, 4),
-			Position = UDim2.new(0, 12, 0.5, -2),
+			Position = UDim2.new(0, 10, 0.5, -2),
 			BackgroundColor3 = Color3.fromRGB(150, 150, 170),
 			Parent = TabBg
 		}, {Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
@@ -334,7 +334,7 @@ function Library:New(config)
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Parent = TabBg
 		}, {
-			Create("UIPadding", {PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 8)})
+			Create("UIPadding", {PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 8)})
 		})
 
 		local Page = Create("ScrollingFrame", {
