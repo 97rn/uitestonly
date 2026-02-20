@@ -1,5 +1,3 @@
-
-
 local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Player = game:GetService("Players").LocalPlayer
@@ -17,11 +15,15 @@ end
 
 local function Create(class, props, children)
 	local obj = Instance.new(class)
-	for k,v in pairs(props or {}) do obj[k] = v end
+	for k, v in pairs(props or {}) do
+		obj[k] = v
+	end
 	if obj:IsA("GuiObject") and (not props or props.ZIndex == nil) then
 		obj.ZIndex = DEFAULT_ZINDEX
 	end
-	for _,c in pairs(children or {}) do c.Parent = obj end
+	for _, c in pairs(children or {}) do
+		c.Parent = obj
+	end
 	return obj
 end
 
@@ -31,8 +33,7 @@ Library.__index = Library
 function Library.SettingManager()
 	local Manager = {}
 	function Manager:AddToTab(tab)
-		tab:Paragraph({Title = "UI Settings", Content = "Manage the interface settings and keybindings here."})
-		tab:Keybind({Name = "UI Toggle Key", Default = Enum.KeyCode.RightShift, OnChange = function(New) end})
+		tab:Paragraph({Title = "UI Settings", Content = "Manage the interface settings here."})
 		tab:Button({Name = "Unload UI", Callback = function()
 			local core = getCoreGuiParent()
 			local gui = core:FindFirstChild("DcusHub_v2.3 UI")
@@ -183,10 +184,133 @@ function Library:New(config)
 		return btn
 	end
 
-	local MinimizeBtn = createControlButton("−", -80, function() end, Color3.fromRGB(220,180,60))
-	createControlButton("×", -45, function() self.Gui:Destroy() end, Color3.fromRGB(220,70,70))
+	local MinimizeBtn = createControlButton("−", -80, function() end, Color3.fromRGB(220, 180, 60))
+	createControlButton("×", -45, function() self.Gui:Destroy() end, Color3.fromRGB(220, 70, 70))
 
 	local IsMinimized = false
+
+	local function minimizeUI()
+		if IsMinimized then return end
+		IsMinimized = true
+		TweenService:Create(self.Main, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, -0.6, 0)}):Play()
+		task.delay(0.45, function()
+			if IsMinimized then
+				self.Main.Visible = false
+				self.ReopenLabel.Visible = true
+			end
+		end)
+		self:Notify({Title = "UI Minimized", Content = "Click the button to reopen", Time = 5})
+	end
+
+	local function restoreUI()
+		if not IsMinimized then return end
+		IsMinimized = false
+		self.Main.Position = UDim2.new(0.5, 0, -0.6, 0)
+		self.Main.Visible = true
+		TweenService:Create(self.Main, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.fromScale(0.5, 0.5)}):Play()
+	end
+
+	self.ReopenLabel.MouseButton1Click:Connect(function()
+		self.ReopenLabel.Visible = false
+		restoreUI()
+	end)
+
+	MinimizeBtn.MouseButton1Click:Connect(function()
+		if IsMinimized then restoreUI() else minimizeUI() end
+	end)
+
+	self.Container = Create("Frame", {
+		Size = UDim2.new(1, 0, 1, -55),
+		Position = UDim2.fromOffset(0, 55),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		Visible = true,
+		ZIndex = 11,
+		Parent = self.Main
+	})
+
+	self.Sidebar = Create("Frame", {
+		Size = UDim2.new(0, 150, 1, -16),
+		Position = UDim2.fromOffset(10, 8),
+		BackgroundColor3 = THEME.PanelBg,
+		ZIndex = 11,
+		Parent = self.Container
+	}, {
+		Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+		Create("UIStroke", {Color = THEME.Stroke, Thickness = 1})
+	})
+
+	self.TabHighlight = Create("Frame", {
+		Size = UDim2.new(1, -16, 0, 34),
+		Position = UDim2.fromOffset(8, 8),
+		BackgroundColor3 = THEME.Accent,
+		BackgroundTransparency = 0.82,
+		Visible = false,
+		ZIndex = 12,
+		Parent = self.Sidebar
+	}, {
+		Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
+		Create("UIStroke", {Color = THEME.AccentSoft, Thickness = 1, Transparency = 0.35})
+	})
+
+	self.TabHolder = Create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		ZIndex = 13,
+		Parent = self.Sidebar
+	}, {
+		Create("UIListLayout", {Padding = UDim.new(0, 5)}),
+		Create("UIPadding", {PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8)})
+	})
+
+	self.Pages = Create("Frame", {
+		Size = UDim2.new(1, -180, 1, -16),
+		Position = UDim2.fromOffset(170, 8),
+		BackgroundTransparency = 1,
+		ZIndex = 11,
+		Parent = self.Container
+	})
+
+	self._activeSliderUpdate = nil
+	self._activeSliderEnd = nil
+
+	UIS.InputChanged:Connect(function(input)
+		if self._activeSliderUpdate and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			self._activeSliderUpdate(input)
+		end
+	end)
+
+	UIS.InputEnded:Connect(function(input)
+		if self._activeSliderUpdate and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+			local endFn = self._activeSliderEnd
+			self._activeSliderUpdate = nil
+			self._activeSliderEnd = nil
+			if endFn then endFn(input) end
+		end
+	end)
+
+	do
+		local dragging, dragStart, startPos
+		local function update(input)
+			local delta = input.Position - dragStart
+			self.Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+		self.Top.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = self.Main.Position
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then dragging = false end
+				end)
+			end
+		end)
+		UIS.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				update(input)
+			end
+		end)
+	end
 
 	function self:Notify(config2)
 		local title = config2.Title or "Notification"
@@ -264,170 +388,6 @@ function Library:New(config)
 			task.delay(0.6, function()
 				if Notif and Notif.Parent then Notif:Destroy() end
 			end)
-		end)
-	end
-
-	local function minimizeUI()
-		if IsMinimized then return end
-		IsMinimized = true
-		TweenService:Create(self.Main, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, -0.6, 0)}):Play()
-		task.delay(0.45, function()
-			if IsMinimized then
-				self.Main.Visible = false
-				self.ReopenLabel.Visible = true
-			end
-		end)
-		self:Notify({Title = "UI Minimized", Content = "Click the left button to reopen", Time = 5})
-	end
-
-	local function restoreUI()
-		if not IsMinimized then return end
-		IsMinimized = false
-		self.Main.Position = UDim2.new(0.5, 0, -0.6, 0)
-		self.Main.Visible = true
-		TweenService:Create(self.Main, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.fromScale(0.5, 0.5)}):Play()
-	end
-
-	self.ReopenLabel.MouseButton1Click:Connect(function()
-		self.ReopenLabel.Visible = false
-		restoreUI()
-	end)
-
-	MinimizeBtn.MouseButton1Click:Connect(function()
-		if IsMinimized then restoreUI() else minimizeUI() end
-	end)
-
-	self.Container = Create("Frame", {
-		Size = UDim2.new(1, 0, 1, -55),
-		Position = UDim2.fromOffset(0, 55),
-		BackgroundTransparency = 1,
-		ClipsDescendants = true,
-		Visible = true,
-		ZIndex = 11,
-		Parent = self.Main
-	})
-
-	self.Sidebar = Create("Frame", {
-		Size = UDim2.new(0, 150, 1, -16),
-		Position = UDim2.fromOffset(10, 8),
-		BackgroundColor3 = THEME.PanelBg,
-		ZIndex = 11,
-		Parent = self.Container
-	}, {
-		Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
-		Create("UIStroke", {Color = THEME.Stroke, Thickness = 1})
-	})
-
-	self.TabHighlight = Create("Frame", {
-		Size = UDim2.new(1, -16, 0, 34),
-		Position = UDim2.fromOffset(8, 8),
-		BackgroundColor3 = THEME.Accent,
-		BackgroundTransparency = 0.82,
-		Visible = false,
-		ZIndex = 12,
-		Parent = self.Sidebar
-	}, {
-		Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-		Create("UIStroke", {Color = THEME.AccentSoft, Thickness = 1, Transparency = 0.35})
-	})
-
-	self.TabHolder = Create("Frame", {
-		Size = UDim2.new(1, 0, 1, 0),
-		BackgroundTransparency = 1,
-		ZIndex = 13,
-		Parent = self.Sidebar
-	}, {
-		Create("UIListLayout", {Padding = UDim.new(0, 5)}),
-		Create("UIPadding", {PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8)})
-	})
-
-	self.Pages = Create("Frame", {
-		Size = UDim2.new(1, -180, 1, -16),
-		Position = UDim2.fromOffset(170, 8),
-		BackgroundTransparency = 1,
-		ZIndex = 11,
-		Parent = self.Container
-	})
-
-	self._input = {activeSlider = nil, sliderEnd = nil, listeningKeybind = nil}
-	self._keybinds = {}
-
-	local function registerKeybind(keyCode, cb)
-		self._keybinds[keyCode] = self._keybinds[keyCode] or {}
-		table.insert(self._keybinds[keyCode], cb)
-		return cb
-	end
-
-	local function unregisterKeybind(keyCode, cb)
-		local list = self._keybinds[keyCode]
-		if not list then return end
-		for i = #list, 1, -1 do
-			if list[i] == cb then
-				table.remove(list, i)
-			end
-		end
-		if #list == 0 then
-			self._keybinds[keyCode] = nil
-		end
-	end
-
-	self._registerKeybind = registerKeybind
-	self._unregisterKeybind = unregisterKeybind
-
-	self._connInputChanged = UIS.InputChanged:Connect(function(input)
-		local fn = self._input.activeSlider
-		if fn and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			fn(input)
-		end
-	end)
-
-	self._connInputEnded = UIS.InputEnded:Connect(function(input)
-		if self._input.activeSlider and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-			local endFn = self._input.sliderEnd
-			self._input.activeSlider = nil
-			self._input.sliderEnd = nil
-			if endFn then endFn(input) end
-		end
-	end)
-
-	self._connInputBegan = UIS.InputBegan:Connect(function(input, gpe)
-		if gpe then return end
-		if self._input.listeningKeybind and input.UserInputType == Enum.UserInputType.Keyboard then
-			local fn = self._input.listeningKeybind
-			self._input.listeningKeybind = nil
-			fn(input.KeyCode)
-			return
-		end
-		if input.UserInputType == Enum.UserInputType.Keyboard then
-			local list = self._keybinds[input.KeyCode]
-			if list then
-				for i = 1, #list do
-					task.spawn(list[i])
-				end
-			end
-		end
-	end)
-
-	do
-		local dragging, dragStart, startPos
-		local function update(input)
-			local delta = input.Position - dragStart
-			self.Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		end
-		self.Top.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-				dragStart = input.Position
-				startPos = self.Main.Position
-				input.Changed:Connect(function()
-					if input.UserInputState == Enum.UserInputState.End then dragging = false end
-				end)
-			end
-		end)
-		UIS.InputChanged:Connect(function(input)
-			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-				update(input)
-			end
 		end)
 	end
 
@@ -702,11 +662,12 @@ function Library:New(config)
 					val = math.floor(rawVal + 0.5)
 				end
 				ValueLabel.Text = tostring(val)
-				TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.fromScale(pos, 1)}):Play()
-				TweenService:Create(Knob, TweenInfo.new(0.1), {Position = UDim2.fromScale(pos, 0.5)}):Play()
+				TweenService:Create(Fill, TweenInfo.new(0.08), {Size = UDim2.fromScale(pos, 1)}):Play()
+				TweenService:Create(Knob, TweenInfo.new(0.08), {Position = UDim2.fromScale(pos, 0.5)}):Play()
 				callback(val)
 			end
 
+			local dragging = false
 			local Hit = Create("TextButton", {
 				Text = "",
 				BackgroundTransparency = 1,
@@ -717,10 +678,11 @@ function Library:New(config)
 
 			Hit.InputBegan:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					dragging = true
 					Update(input)
-					self._input.activeSlider = Update
-					self._input.sliderEnd = function()
-						self._input.activeSlider = nil
+					self._activeSliderUpdate = Update
+					self._activeSliderEnd = function()
+						dragging = false
 					end
 				end
 			end)
@@ -943,6 +905,7 @@ function Library:New(config)
 			local default = config3.Default or Enum.KeyCode.E
 			local callback = config3.Callback or function() end
 			local onChange = config3.OnChange or function() end
+			local listening = false
 
 			local BindBg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 40),
@@ -987,30 +950,20 @@ function Library:New(config)
 
 			local Hit = Create("TextButton", {Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = BindBg.ZIndex + 1, Parent = BindBg})
 
-			local boundCallback
-			boundCallback = function()
-				local t = TweenService:Create(BindDisplay, TweenInfo.new(0.1), {BackgroundColor3 = THEME.AccentSoft})
-				t:Play()
-				t.Completed:Connect(function()
-					if BindDisplay and BindDisplay.Parent then
-						TweenService:Create(BindDisplay, TweenInfo.new(0.2), {BackgroundColor3 = THEME.PanelBg}):Play()
-					end
-				end)
-				callback()
-			end
-
-			self._registerKeybind(default, boundCallback)
-
 			Hit.MouseButton1Click:Connect(function()
+				listening = true
 				BindText.Text = "..."
-				TweenService:Create(BindDisplay:FindFirstChildOfClass("UIStroke"), TweenInfo.new(0.2), {Color = THEME.AccentSoft}):Play()
-				self._input.listeningKeybind = function(newKey)
-					self._unregisterKeybind(default, boundCallback)
-					default = newKey
-					self._registerKeybind(default, boundCallback)
-					BindText.Text = newKey.Name
-					TweenService:Create(BindDisplay:FindFirstChildOfClass("UIStroke"), TweenInfo.new(0.2), {Color = THEME.StrokeSoft}):Play()
-					onChange(newKey)
+			end)
+
+			UIS.InputBegan:Connect(function(input, gpe)
+				if gpe then return end
+				if listening and input.UserInputType == Enum.UserInputType.Keyboard then
+					listening = false
+					default = input.KeyCode
+					BindText.Text = input.KeyCode.Name
+					onChange(input.KeyCode)
+				elseif not listening and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == default then
+					callback()
 				end
 			end)
 		end
