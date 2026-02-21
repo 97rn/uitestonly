@@ -5,25 +5,25 @@ local TextService = game:GetService("TextService")
 
 local DEFAULT_ZINDEX = 10
 
-local function getCoreGuiParent()
+local function SafeGetHui()
 	if typeof(gethui) == "function" then
 		local ok, res = pcall(gethui)
 		if ok and res then return res end
 	end
-	return Player:FindFirstChild("PlayerGui") or game:GetService("CoreGui")
+	return nil
+end
+
+local function CoreParent()
+	return SafeGetHui() or Player:FindFirstChild("PlayerGui") or game:GetService("CoreGui")
 end
 
 local function Create(class, props, children)
 	local obj = Instance.new(class)
-	for k, v in pairs(props or {}) do
-		obj[k] = v
-	end
+	for k,v in pairs(props or {}) do obj[k] = v end
 	if obj:IsA("GuiObject") and (not props or props.ZIndex == nil) then
 		obj.ZIndex = DEFAULT_ZINDEX
 	end
-	for _, c in pairs(children or {}) do
-		c.Parent = obj
-	end
+	for _,c in pairs(children or {}) do c.Parent = obj end
 	return obj
 end
 
@@ -35,7 +35,7 @@ function Library.SettingManager()
 	function Manager:AddToTab(tab)
 		tab:Paragraph({Title = "UI Settings", Content = "Manage the interface settings here."})
 		tab:Button({Name = "Unload UI", Callback = function()
-			local core = getCoreGuiParent()
+			local core = CoreParent()
 			local gui = core:FindFirstChild("DcusHub_v2.3 UI")
 			if gui then gui:Destroy() end
 			local notifs = core:FindFirstChild("DcusNotifications")
@@ -69,7 +69,7 @@ function Library:New(config)
 		Name = "DcusHub_v2.3 UI",
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-		Parent = getCoreGuiParent()
+		Parent = CoreParent()
 	})
 
 	self.Main = Create("Frame", {
@@ -184,8 +184,8 @@ function Library:New(config)
 		return btn
 	end
 
-	local MinimizeBtn = createControlButton("−", -80, function() end, Color3.fromRGB(220, 180, 60))
-	createControlButton("×", -45, function() self.Gui:Destroy() end, Color3.fromRGB(220, 70, 70))
+	local MinimizeBtn = createControlButton("−", -80, function() end, Color3.fromRGB(220,180,60))
+	createControlButton("×", -45, function() self.Gui:Destroy() end, Color3.fromRGB(220,70,70))
 
 	local IsMinimized = false
 
@@ -199,7 +199,7 @@ function Library:New(config)
 				self.ReopenLabel.Visible = true
 			end
 		end)
-		self:Notify({Title = "UI Minimized", Content = "Click the button to reopen", Time = 5})
+		self:Notify({Title = "UI Minimized", Content = "Click the left button to reopen", Time = 5})
 	end
 
 	local function restoreUI()
@@ -317,7 +317,7 @@ function Library:New(config)
 		local content = config2.Content or ""
 		local duration = config2.Time or 5
 
-		local core = getCoreGuiParent()
+		local core = CoreParent()
 		local NotifGui = core:FindFirstChild("DcusNotifications")
 		if not NotifGui then
 			NotifGui = Create("ScreenGui", {Name = "DcusNotifications", ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Parent = core})
@@ -385,19 +385,18 @@ function Library:New(config)
 			TweenService:Create(Notif.UIStroke, TweenInfo.new(0.5), {Transparency = 1}):Play()
 			TweenService:Create(TitleLabel, TweenInfo.new(0.55), {TextTransparency = 1}):Play()
 			TweenService:Create(ContentLabel, TweenInfo.new(0.55), {TextTransparency = 1}):Play()
-			task.delay(0.6, function()
-				if Notif and Notif.Parent then Notif:Destroy() end
-			end)
+			task.delay(0.6, function() if Notif and Notif.Parent then Notif:Destroy() end end)
 		end)
 	end
 
 	function self:NewTab(name)
+		local UI = self
 		local Tab = {}
 
 		local TabBg = Create("Frame", {
 			Size = UDim2.new(1, 0, 0, 34),
 			BackgroundColor3 = THEME.ItemBg,
-			Parent = self.TabHolder
+			Parent = UI.TabHolder
 		}, {
 			Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
 			Create("UIStroke", {Color = THEME.Stroke, Thickness = 1})
@@ -427,7 +426,7 @@ function Library:New(config)
 			ScrollBarThickness = 2,
 			ScrollBarImageColor3 = THEME.AccentSoft,
 			CanvasSize = UDim2.new(0, 0, 0, 0),
-			Parent = self.Pages
+			Parent = UI.Pages
 		}, {
 			Create("UIListLayout", {Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder}),
 			Create("UIPadding", {PaddingTop = UDim.new(0, 2), PaddingLeft = UDim.new(0, 2), PaddingRight = UDim.new(0, 8)})
@@ -441,20 +440,18 @@ function Library:New(config)
 		task.spawn(UpdateCanvasSize)
 
 		TabBtn.MouseButton1Click:Connect(function()
-			self.TabHighlight.Visible = true
-			local yPos = TabBg.AbsolutePosition.Y - self.Sidebar.AbsolutePosition.Y
-			TweenService:Create(self.TabHighlight, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.fromOffset(8, yPos)}):Play()
+			UI.TabHighlight.Visible = true
+			local yPos = TabBg.AbsolutePosition.Y - UI.Sidebar.AbsolutePosition.Y
+			TweenService:Create(UI.TabHighlight, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.fromOffset(8, yPos)}):Play()
 
-			for _, p in pairs(self.Pages:GetChildren()) do
+			for _, p in pairs(UI.Pages:GetChildren()) do
 				if p:IsA("ScrollingFrame") then p.Visible = false end
 			end
 
-			for _, bg in pairs(self.TabHolder:GetChildren()) do
+			for _, bg in pairs(UI.TabHolder:GetChildren()) do
 				if bg:IsA("Frame") and bg:FindFirstChild("Frame") then
-					local tb = bg:FindFirstChildOfClass("TextButton")
-					local fr = bg:FindFirstChild("Frame")
-					if tb then TweenService:Create(tb, TweenInfo.new(0.2), {TextColor3 = THEME.TextDim}):Play() end
-					if fr then TweenService:Create(fr, TweenInfo.new(0.2), {BackgroundColor3 = THEME.TextMuted}):Play() end
+					TweenService:Create(bg:FindFirstChildOfClass("TextButton"), TweenInfo.new(0.2), {TextColor3 = THEME.TextDim}):Play()
+					TweenService:Create(bg:FindFirstChild("Frame"), TweenInfo.new(0.2), {BackgroundColor3 = THEME.TextMuted}):Play()
 				end
 			end
 
@@ -655,19 +652,13 @@ function Library:New(config)
 				if not input.Position then return end
 				local pos = math.clamp((input.Position.X - Tray.AbsolutePosition.X) / Tray.AbsoluteSize.X, 0, 1)
 				local rawVal = min + (max - min) * pos
-				local val
-				if rounding == 1 then
-					val = math.floor(rawVal * 10 + 0.5) / 10
-				else
-					val = math.floor(rawVal + 0.5)
-				end
+				local val = rounding == 1 and (math.floor(rawVal * 10 + 0.5) / 10) or math.floor(rawVal + 0.5)
 				ValueLabel.Text = tostring(val)
-				TweenService:Create(Fill, TweenInfo.new(0.08), {Size = UDim2.fromScale(pos, 1)}):Play()
-				TweenService:Create(Knob, TweenInfo.new(0.08), {Position = UDim2.fromScale(pos, 0.5)}):Play()
+				TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.fromScale(pos, 1)}):Play()
+				TweenService:Create(Knob, TweenInfo.new(0.1), {Position = UDim2.fromScale(pos, 0.5)}):Play()
 				callback(val)
 			end
 
-			local dragging = false
 			local Hit = Create("TextButton", {
 				Text = "",
 				BackgroundTransparency = 1,
@@ -678,12 +669,9 @@ function Library:New(config)
 
 			Hit.InputBegan:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-					dragging = true
 					Update(input)
-					self._activeSliderUpdate = Update
-					self._activeSliderEnd = function()
-						dragging = false
-					end
+					UI._activeSliderUpdate = Update
+					UI._activeSliderEnd = function() end
 				end
 			end)
 		end
@@ -779,7 +767,8 @@ function Library:New(config)
 				})
 				Opt.MouseButton1Click:Connect(function() Select(v, Opt) end)
 				if default and v == default then
-					task.defer(function()
+					task.spawn(function()
+						repeat task.wait() until Opt.AbsolutePosition.Y > 0
 						Select(v, Opt)
 					end)
 				end
@@ -819,17 +808,10 @@ function Library:New(config)
 				Parent = LabelBg
 			})
 
-			local busy = false
 			local function Resize()
-				if busy then return end
-				busy = true
-				task.defer(function()
-					if not Text or not Text.Parent then busy = false return end
-					local ts = TextService:GetTextSize(Text.Text, Text.TextSize, Text.Font, Vector2.new(Text.AbsoluteSize.X, 10000))
-					LabelBg.Size = UDim2.new(1, 0, 0, ts.Y + 16)
-					Text.Size = UDim2.new(1, -30, 0, ts.Y)
-					busy = false
-				end)
+				local ts = TextService:GetTextSize(Text.Text, Text.TextSize, Text.Font, Vector2.new(Text.AbsoluteSize.X, 10000))
+				LabelBg.Size = UDim2.new(1, 0, 0, ts.Y + 16)
+				Text.Size = UDim2.new(1, -30, 0, ts.Y)
 			end
 
 			Text:GetPropertyChangedSignal("AbsoluteSize"):Connect(Resize)
@@ -883,17 +865,10 @@ function Library:New(config)
 				Parent = SectionBg
 			})
 
-			local busy = false
 			local function Resize()
-				if busy then return end
-				busy = true
-				task.defer(function()
-					if not Desc or not Desc.Parent then busy = false return end
-					local ts = TextService:GetTextSize(Desc.Text, Desc.TextSize, Desc.Font, Vector2.new(Desc.AbsoluteSize.X, 10000))
-					SectionBg.Size = UDim2.new(1, 0, 0, ts.Y + 50)
-					Desc.Size = UDim2.new(1, -30, 0, ts.Y)
-					busy = false
-				end)
+				local ts = TextService:GetTextSize(Desc.Text, Desc.TextSize, Desc.Font, Vector2.new(Desc.AbsoluteSize.X, 10000))
+				SectionBg.Size = UDim2.new(1, 0, 0, ts.Y + 50)
+				Desc.Size = UDim2.new(1, -30, 0, ts.Y)
 			end
 
 			Desc:GetPropertyChangedSignal("AbsoluteSize"):Connect(Resize)
@@ -953,6 +928,8 @@ function Library:New(config)
 			Hit.MouseButton1Click:Connect(function()
 				listening = true
 				BindText.Text = "..."
+				local stroke = BindDisplay:FindFirstChildOfClass("UIStroke")
+				if stroke then TweenService:Create(stroke, TweenInfo.new(0.2), {Color = THEME.AccentSoft}):Play() end
 			end)
 
 			UIS.InputBegan:Connect(function(input, gpe)
@@ -961,8 +938,15 @@ function Library:New(config)
 					listening = false
 					default = input.KeyCode
 					BindText.Text = input.KeyCode.Name
+					local stroke = BindDisplay:FindFirstChildOfClass("UIStroke")
+					if stroke then TweenService:Create(stroke, TweenInfo.new(0.2), {Color = THEME.StrokeSoft}):Play() end
 					onChange(input.KeyCode)
 				elseif not listening and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == default then
+					local t = TweenService:Create(BindDisplay, TweenInfo.new(0.1), {BackgroundColor3 = THEME.AccentSoft})
+					t:Play()
+					t.Completed:Connect(function()
+						TweenService:Create(BindDisplay, TweenInfo.new(0.2), {BackgroundColor3 = THEME.PanelBg}):Play()
+					end)
 					callback()
 				end
 			end)
