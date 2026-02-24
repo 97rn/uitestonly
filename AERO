@@ -39,10 +39,14 @@ function SaveManager.new(opts)
 	self.Path = self.Folder .. "/" .. self.File
 	self.Data = {}
 
-	if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
-		if not isfolder(self.Folder) then
-			pcall(function() makefolder(self.Folder) end)
-		end
+	if typeof(makefolder) == "function" then
+		pcall(function()
+			if typeof(isfolder) == "function" then
+				if not isfolder(self.Folder) then makefolder(self.Folder) end
+			else
+				makefolder(self.Folder)
+			end
+		end)
 	end
 
 	if typeof(isfile) == "function" and typeof(readfile) == "function" and isfile(self.Path) then
@@ -78,6 +82,14 @@ function SaveManager:Save()
 			writefile(self.Path, encoded)
 		end)
 	end
+end
+
+local function SanitizeKey(s)
+	s = tostring(s or "")
+	s = s:gsub("%s+", "_")
+	s = s:gsub("[^%w_%-%:%.]", "")
+	if s == "" then s = "key" end
+	return s
 end
 
 local Library = {}
@@ -450,6 +462,17 @@ function Library:New(config)
 	function self:NewTab(name)
 		local UI = self
 		local Tab = {}
+		Tab.__name = name
+
+		local function KeyFor(kind, label, explicitFlag)
+			if explicitFlag and tostring(explicitFlag) ~= "" then
+				return SanitizeKey(explicitFlag)
+			end
+			local t = SanitizeKey(Tab.__name or "tab")
+			local k = SanitizeKey(kind or "item")
+			local l = SanitizeKey(label or "control")
+			return t .. ":" .. k .. ":" .. l
+		end
 
 		local TabBg = Create("Frame", {
 			Size = UDim2.new(1, 0, 0, 34),
@@ -521,7 +544,7 @@ function Library:New(config)
 		function Tab:Button(config3)
 			local text = config3.Name or config3.Text or "Button"
 			local callback = config3.Callback or function() end
-			local flag = config3.Flag
+			local flag = KeyFor("button", text, config3.Flag)
 
 			local BtnBg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 45),
@@ -574,8 +597,8 @@ function Library:New(config)
 			Hit.MouseButton1Up:Connect(function()
 				TweenService:Create(BtnBg, TweenInfo.new(0.3), {BackgroundColor3 = THEME.ItemBg}):Play()
 				TweenService:Create(RunBadge, TweenInfo.new(0.3), {BackgroundColor3 = THEME.PanelBg}):Play()
-				if flag and UI.Save then
-					UI.Save:Set(flag, true)
+				if UI.Save then
+					UI.Save:Set(flag .. ":last", os.time())
 				end
 				callback()
 			end)
@@ -584,10 +607,10 @@ function Library:New(config)
 		function Tab:Toggle(config3)
 			local text = config3.Name or "Toggle"
 			local callback = config3.Callback or function() end
-			local flag = config3.Flag
+			local flag = KeyFor("toggle", text, config3.Flag)
 			local state = config3.Default or false
 
-			if flag and UI.Save then
+			if UI.Save then
 				state = UI.Save:Get(flag, state)
 			end
 
@@ -638,7 +661,7 @@ function Library:New(config)
 			Hit.MouseButton1Click:Connect(function()
 				state = not state
 				updateView(state)
-				if flag and UI.Save then
+				if UI.Save then
 					UI.Save:Set(flag, state)
 				end
 				callback(state)
@@ -652,7 +675,7 @@ function Library:New(config)
 			function ToggleFunctions:SetValue(val)
 				state = val
 				updateView(state)
-				if flag and UI.Save then
+				if UI.Save then
 					UI.Save:Set(flag, state)
 				end
 				callback(state)
@@ -666,10 +689,10 @@ function Library:New(config)
 			local max = config3.Max or 100
 			local rounding = config3.Rounding or 0
 			local callback = config3.Callback or function() end
-			local flag = config3.Flag
+			local flag = KeyFor("slider", text, config3.Flag)
 			local default = config3.Default or min
 
-			if flag and UI.Save then
+			if UI.Save then
 				default = UI.Save:Get(flag, default)
 			end
 
@@ -746,7 +769,7 @@ function Library:New(config)
 				ValueLabel.Text = tostring(val)
 				TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.fromScale(pos, 1)}):Play()
 				TweenService:Create(Knob, TweenInfo.new(0.1), {Position = UDim2.fromScale(pos, 0.5)}):Play()
-				if flag and UI.Save then
+				if UI.Save then
 					UI.Save:Set(flag, val)
 				end
 				callback(val)
@@ -784,10 +807,10 @@ function Library:New(config)
 			local list = config3.List or {}
 			local callback = config3.Callback or function() end
 			local expanded = false
-			local flag = config3.Flag
+			local flag = KeyFor("dropdown", text, config3.Flag)
 			local default = config3.Default
 
-			if flag and UI.Save then
+			if UI.Save then
 				default = UI.Save:Get(flag, default)
 			end
 
@@ -859,7 +882,7 @@ function Library:New(config)
 				end
 				TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = THEME.Text}):Play()
 				TitleLabel.Text = text .. " : " .. v
-				if flag and UI.Save then
+				if UI.Save then
 					UI.Save:Set(flag, v)
 				end
 				callback(v)
@@ -998,9 +1021,9 @@ function Library:New(config)
 			local callback = config3.Callback or function() end
 			local onChange = config3.OnChange or function() end
 			local listening = false
-			local flag = config3.Flag
+			local flag = KeyFor("keybind", text, config3.Flag)
 
-			if flag and UI.Save then
+			if UI.Save then
 				local saved = UI.Save:Get(flag, nil)
 				if typeof(saved) == "string" and Enum.KeyCode[saved] then
 					default = Enum.KeyCode[saved]
@@ -1065,7 +1088,7 @@ function Library:New(config)
 					BindText.Text = input.KeyCode.Name
 					local stroke = BindDisplay:FindFirstChildOfClass("UIStroke")
 					if stroke then TweenService:Create(stroke, TweenInfo.new(0.2), {Color = THEME.StrokeSoft}):Play() end
-					if flag and UI.Save then
+					if UI.Save then
 						UI.Save:Set(flag, input.KeyCode.Name)
 					end
 					onChange(input.KeyCode)
@@ -1084,10 +1107,10 @@ function Library:New(config)
 			local text = config3.Name or "Textbox"
 			local placeholder = config3.Placeholder or "Enter..."
 			local callback = config3.Callback or function() end
-			local flag = config3.Flag
+			local flag = KeyFor("textbox", text, config3.Flag)
 			local default = config3.Default or ""
 
-			if flag and UI.Save then
+			if UI.Save then
 				default = UI.Save:Get(flag, default)
 			end
 
@@ -1146,7 +1169,7 @@ function Library:New(config)
 				TweenService:Create(InputHolder, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 60, 0, 26), Position = UDim2.new(1, -75, 0.5, -13)}):Play()
 				TweenService:Create(InputHolder:FindFirstChildOfClass("UIStroke"), TweenInfo.new(0.4), {Color = THEME.StrokeSoft}):Play()
 				TweenService:Create(TitleLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
-				if flag and UI.Save then
+				if UI.Save then
 					UI.Save:Set(flag, Input.Text)
 				end
 				callback(Input.Text, enterPressed)
