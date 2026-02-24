@@ -2,7 +2,6 @@ local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Player = game:GetService("Players").LocalPlayer
 local TextService = game:GetService("TextService")
-local HttpService = game:GetService("HttpService")
 
 local DEFAULT_ZINDEX = 10
 
@@ -28,70 +27,6 @@ local function Create(class, props, children)
 	return obj
 end
 
-local SaveManager = {}
-SaveManager.__index = SaveManager
-
-function SaveManager.new(opts)
-	opts = opts or {}
-	local self = setmetatable({}, SaveManager)
-	self.Folder = opts.Folder or "Aero Config"
-	self.File = (opts.File or "ui_settings") .. ".json"
-	self.Path = self.Folder .. "/" .. self.File
-	self.Data = {}
-
-	if typeof(makefolder) == "function" then
-		pcall(function()
-			if typeof(isfolder) == "function" then
-				if not isfolder(self.Folder) then makefolder(self.Folder) end
-			else
-				makefolder(self.Folder)
-			end
-		end)
-	end
-
-	if typeof(isfile) == "function" and typeof(readfile) == "function" and isfile(self.Path) then
-		local ok, decoded = pcall(function()
-			return HttpService:JSONDecode(readfile(self.Path))
-		end)
-		if ok and type(decoded) == "table" then
-			self.Data = decoded
-		end
-	end
-
-	return self
-end
-
-function SaveManager:Get(key, default)
-	local v = self.Data[key]
-	if v == nil then return default end
-	return v
-end
-
-function SaveManager:Set(key, value)
-	self.Data[key] = value
-	self:Save()
-end
-
-function SaveManager:Save()
-	if typeof(writefile) ~= "function" then return end
-	local ok, encoded = pcall(function()
-		return HttpService:JSONEncode(self.Data)
-	end)
-	if ok then
-		pcall(function()
-			writefile(self.Path, encoded)
-		end)
-	end
-end
-
-local function SanitizeKey(s)
-	s = tostring(s or "")
-	s = s:gsub("%s+", "_")
-	s = s:gsub("[^%w_%-%:%.]", "")
-	if s == "" then s = "key" end
-	return s
-end
-
 local Library = {}
 Library.__index = Library
 
@@ -101,9 +36,9 @@ function Library.SettingManager()
 		tab:Paragraph({Title = "UI Settings", Content = "Manage the interface settings here."})
 		tab:Button({Name = "Unload UI", Callback = function()
 			local core = CoreParent()
-			local gui = core:FindFirstChild("AeroHub_v2.3 UI")
+			local gui = core:FindFirstChild("DcusHub_v2.3 UI")
 			if gui then gui:Destroy() end
-			local notifs = core:FindFirstChild("AeroNotifications")
+			local notifs = core:FindFirstChild("DcusNotifications")
 			if notifs then notifs:Destroy() end
 		end})
 	end
@@ -130,13 +65,8 @@ function Library:New(config)
 
 	self = setmetatable({}, Library)
 
-	self.Save = SaveManager.new({
-		Folder = config.SaveFolder or "Aero Config",
-		File = config.SaveFile or "ui_settings"
-	})
-
 	self.Gui = Create("ScreenGui", {
-		Name = "AeroHub_v2.3 UI",
+		Name = "DcusHub_v2.3 UI",
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = CoreParent()
@@ -213,7 +143,7 @@ function Library:New(config)
 	})
 
 	Create("TextLabel", {
-		Text = config.Title or "Aero Hub",
+		Text = config.Title or "Dcus Hub",
 		Font = Enum.Font.GothamBold,
 		TextSize = 18,
 		TextColor3 = THEME.Text,
@@ -388,9 +318,9 @@ function Library:New(config)
 		local duration = config2.Time or 5
 
 		local core = CoreParent()
-		local NotifGui = core:FindFirstChild("AeroNotifications")
+		local NotifGui = core:FindFirstChild("DcusNotifications")
 		if not NotifGui then
-			NotifGui = Create("ScreenGui", {Name = "AeroNotifications", ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Parent = core})
+			NotifGui = Create("ScreenGui", {Name = "DcusNotifications", ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Parent = core})
 		end
 
 		local Holder = NotifGui:FindFirstChild("NotifHolder") or Create("Frame", {
@@ -462,17 +392,6 @@ function Library:New(config)
 	function self:NewTab(name)
 		local UI = self
 		local Tab = {}
-		Tab.__name = name
-
-		local function KeyFor(kind, label, explicitFlag)
-			if explicitFlag and tostring(explicitFlag) ~= "" then
-				return SanitizeKey(explicitFlag)
-			end
-			local t = SanitizeKey(Tab.__name or "tab")
-			local k = SanitizeKey(kind or "item")
-			local l = SanitizeKey(label or "control")
-			return t .. ":" .. k .. ":" .. l
-		end
 
 		local TabBg = Create("Frame", {
 			Size = UDim2.new(1, 0, 0, 34),
@@ -544,7 +463,6 @@ function Library:New(config)
 		function Tab:Button(config3)
 			local text = config3.Name or config3.Text or "Button"
 			local callback = config3.Callback or function() end
-			local flag = KeyFor("button", text, config3.Flag)
 
 			local BtnBg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 45),
@@ -597,9 +515,6 @@ function Library:New(config)
 			Hit.MouseButton1Up:Connect(function()
 				TweenService:Create(BtnBg, TweenInfo.new(0.3), {BackgroundColor3 = THEME.ItemBg}):Play()
 				TweenService:Create(RunBadge, TweenInfo.new(0.3), {BackgroundColor3 = THEME.PanelBg}):Play()
-				if UI.Save then
-					UI.Save:Set(flag .. ":last", os.time())
-				end
 				callback()
 			end)
 		end
@@ -607,12 +522,7 @@ function Library:New(config)
 		function Tab:Toggle(config3)
 			local text = config3.Name or "Toggle"
 			local callback = config3.Callback or function() end
-			local flag = KeyFor("toggle", text, config3.Flag)
 			local state = config3.Default or false
-
-			if UI.Save then
-				state = UI.Save:Get(flag, state)
-			end
 
 			local TglBg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 45),
@@ -661,13 +571,6 @@ function Library:New(config)
 			Hit.MouseButton1Click:Connect(function()
 				state = not state
 				updateView(state)
-				if UI.Save then
-					UI.Save:Set(flag, state)
-				end
-				callback(state)
-			end)
-
-			task.spawn(function()
 				callback(state)
 			end)
 
@@ -675,9 +578,6 @@ function Library:New(config)
 			function ToggleFunctions:SetValue(val)
 				state = val
 				updateView(state)
-				if UI.Save then
-					UI.Save:Set(flag, state)
-				end
 				callback(state)
 			end
 			return ToggleFunctions
@@ -687,14 +587,9 @@ function Library:New(config)
 			local text = config3.Name or "Slider"
 			local min = config3.Min or 0
 			local max = config3.Max or 100
+			local default = config3.Default or min
 			local rounding = config3.Rounding or 0
 			local callback = config3.Callback or function() end
-			local flag = KeyFor("slider", text, config3.Flag)
-			local default = config3.Default or min
-
-			if UI.Save then
-				default = UI.Save:Get(flag, default)
-			end
 
 			local SliderBg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 50),
@@ -736,11 +631,8 @@ function Library:New(config)
 				Parent = SliderBg
 			}, {Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
 
-			local initPos = (default - min) / (max - min)
-			initPos = math.clamp(initPos, 0, 1)
-
 			local Fill = Create("Frame", {
-				Size = UDim2.fromScale(initPos, 1),
+				Size = UDim2.fromScale((default - min) / (max - min), 1),
 				BackgroundColor3 = THEME.AccentSoft,
 				Parent = Tray
 			}, {Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
@@ -748,7 +640,7 @@ function Library:New(config)
 			local Knob = Create("Frame", {
 				Size = UDim2.fromOffset(8, 8),
 				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(initPos, 0.5),
+				Position = UDim2.fromScale((default - min) / (max - min), 0.5),
 				BackgroundColor3 = THEME.ItemBg,
 				Parent = Tray
 			}, {
@@ -756,29 +648,15 @@ function Library:New(config)
 				Create("UIStroke", {Color = THEME.AccentSoft, Thickness = 1.5})
 			})
 
-			local function quantize(rawVal)
-				if rounding == 1 then
-					return (math.floor(rawVal * 10 + 0.5) / 10)
-				end
-				return math.floor(rawVal + 0.5)
-			end
-
-			local function applyValue(pos)
-				local rawVal = min + (max - min) * pos
-				local val = quantize(rawVal)
-				ValueLabel.Text = tostring(val)
-				TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.fromScale(pos, 1)}):Play()
-				TweenService:Create(Knob, TweenInfo.new(0.1), {Position = UDim2.fromScale(pos, 0.5)}):Play()
-				if UI.Save then
-					UI.Save:Set(flag, val)
-				end
-				callback(val)
-			end
-
 			local function Update(input)
 				if not input.Position then return end
 				local pos = math.clamp((input.Position.X - Tray.AbsolutePosition.X) / Tray.AbsoluteSize.X, 0, 1)
-				applyValue(pos)
+				local rawVal = min + (max - min) * pos
+				local val = rounding == 1 and (math.floor(rawVal * 10 + 0.5) / 10) or math.floor(rawVal + 0.5)
+				ValueLabel.Text = tostring(val)
+				TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.fromScale(pos, 1)}):Play()
+				TweenService:Create(Knob, TweenInfo.new(0.1), {Position = UDim2.fromScale(pos, 0.5)}):Play()
+				callback(val)
 			end
 
 			local Hit = Create("TextButton", {
@@ -796,23 +674,14 @@ function Library:New(config)
 					UI._activeSliderEnd = function() end
 				end
 			end)
-
-			task.spawn(function()
-				callback(default)
-			end)
 		end
 
 		function Tab:Dropdown(config3)
 			local text = config3.Name or "Dropdown"
 			local list = config3.List or {}
+			local default = config3.Default
 			local callback = config3.Callback or function() end
 			local expanded = false
-			local flag = KeyFor("dropdown", text, config3.Flag)
-			local default = config3.Default
-
-			if UI.Save then
-				default = UI.Save:Get(flag, default)
-			end
 
 			local DropdownBg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 45),
@@ -882,9 +751,6 @@ function Library:New(config)
 				end
 				TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = THEME.Text}):Play()
 				TitleLabel.Text = text .. " : " .. v
-				if UI.Save then
-					UI.Save:Set(flag, v)
-				end
 				callback(v)
 			end
 
@@ -900,6 +766,12 @@ function Library:New(config)
 					Parent = OptionHolder
 				})
 				Opt.MouseButton1Click:Connect(function() Select(v, Opt) end)
+				if default and v == default then
+					task.spawn(function()
+						repeat task.wait() until Opt.AbsolutePosition.Y > 0
+						Select(v, Opt)
+					end)
+				end
 			end
 
 			Header.MouseButton1Click:Connect(function()
@@ -907,18 +779,6 @@ function Library:New(config)
 				TweenService:Create(DropdownBg, TweenInfo.new(0.4, Enum.EasingStyle.Quart), {Size = UDim2.new(1, 0, 0, expanded and (45 + #list * 32 + 10) or 45)}):Play()
 				TweenService:Create(Arrow, TweenInfo.new(0.4), {Rotation = expanded and 180 or 0}):Play()
 			end)
-
-			if default ~= nil then
-				task.spawn(function()
-					repeat task.wait() until DropdownBg.AbsoluteSize.Y > 0
-					for _, o in pairs(OptionHolder:GetChildren()) do
-						if o:IsA("TextButton") and o.Text == default then
-							Select(default, o)
-							break
-						end
-					end
-				end)
-			end
 		end
 
 		function Tab:Label(config3)
@@ -1021,14 +881,6 @@ function Library:New(config)
 			local callback = config3.Callback or function() end
 			local onChange = config3.OnChange or function() end
 			local listening = false
-			local flag = KeyFor("keybind", text, config3.Flag)
-
-			if UI.Save then
-				local saved = UI.Save:Get(flag, nil)
-				if typeof(saved) == "string" and Enum.KeyCode[saved] then
-					default = Enum.KeyCode[saved]
-				end
-			end
 
 			local BindBg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 40),
@@ -1088,9 +940,6 @@ function Library:New(config)
 					BindText.Text = input.KeyCode.Name
 					local stroke = BindDisplay:FindFirstChildOfClass("UIStroke")
 					if stroke then TweenService:Create(stroke, TweenInfo.new(0.2), {Color = THEME.StrokeSoft}):Play() end
-					if UI.Save then
-						UI.Save:Set(flag, input.KeyCode.Name)
-					end
 					onChange(input.KeyCode)
 				elseif not listening and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == default then
 					local t = TweenService:Create(BindDisplay, TweenInfo.new(0.1), {BackgroundColor3 = THEME.AccentSoft})
@@ -1107,12 +956,6 @@ function Library:New(config)
 			local text = config3.Name or "Textbox"
 			local placeholder = config3.Placeholder or "Enter..."
 			local callback = config3.Callback or function() end
-			local flag = KeyFor("textbox", text, config3.Flag)
-			local default = config3.Default or ""
-
-			if UI.Save then
-				default = UI.Save:Get(flag, default)
-			end
 
 			local BoxBg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 40),
@@ -1147,7 +990,7 @@ function Library:New(config)
 			})
 
 			local Input = Create("TextBox", {
-				Text = default,
+				Text = "",
 				PlaceholderText = placeholder,
 				Font = Enum.Font.GothamMedium,
 				TextSize = 11,
@@ -1169,9 +1012,6 @@ function Library:New(config)
 				TweenService:Create(InputHolder, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 60, 0, 26), Position = UDim2.new(1, -75, 0.5, -13)}):Play()
 				TweenService:Create(InputHolder:FindFirstChildOfClass("UIStroke"), TweenInfo.new(0.4), {Color = THEME.StrokeSoft}):Play()
 				TweenService:Create(TitleLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
-				if UI.Save then
-					UI.Save:Set(flag, Input.Text)
-				end
 				callback(Input.Text, enterPressed)
 			end)
 		end
